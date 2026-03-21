@@ -1,0 +1,7 @@
+services:
+  chinook_api:
+    build: .
+    container_name: chinook_api
+    ports:
+      - "8000:8000"
+    restart: always
