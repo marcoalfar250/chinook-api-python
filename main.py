@@ -1,18 +1,44 @@
-from fastapi import FastAPI, HTTPException
-from schemas import ComentarioClienteCrear
 from typing import Optional
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.exceptions import RequestValidationError
+from fastapi.security import OAuth2PasswordRequestForm
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import crud
-
-app = FastAPI(
-    title="Chinook API",
-    version="1.0"
+from schemas import (
+    ComentarioClienteCrear,
+    LoginRequest
 )
+from exceptions import (
+    http_exception_handler,
+    validation_exception_handler,
+    generic_exception_handler
+)
+from auth import create_access_token
+from security import get_current_user
+
+app = FastAPI(title="Chinook API", version="1.0")
+
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, generic_exception_handler)
 
 
 @app.get("/")
 def inicio():
     return {"mensaje": "Servicio Chinook activo"}
+
+@app.post("/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    if form_data.username != "admin" or form_data.password != "123456":
+        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+
+    token = create_access_token(data={"sub": form_data.username})
+
+    return {
+        "access_token": token,
+        "token_type": "bearer"
+    }
 
 
 @app.get("/clientes")
@@ -33,12 +59,15 @@ def listar_clientes_paginados(
     page: int = 1,
     page_size: int = 10,
     country: Optional[str] = None,
-    nombre: Optional[str] = None
+    nombre: Optional[str] = None,
+    sort_by: str = "CustomerId",
+    sort_order: str = "asc",
+    current_user: dict = Depends(get_current_user)
 ):
     if page < 1 or page_size < 1:
         raise HTTPException(status_code=400, detail="Parámetros inválidos")
     
-    return crud.obtener_clientes_paginado(page, page_size, country, nombre)
+    return crud.obtener_clientes_paginado(page, page_size, country, nombre,sort_by,sort_order)
 
 
 @app.get("/artistas")

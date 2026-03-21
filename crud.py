@@ -1,5 +1,5 @@
 from database import get_connection
-
+import math
 
 def obtener_clientes():
     conn = get_connection()
@@ -26,39 +26,76 @@ def obtener_clientes():
 
     return resultado
 
-def obtener_clientes_paginado(page: int = 1, page_size: int = 10, country: str = None, nombre: str = None):
+def obtener_clientes_paginado(
+        page: int = 1, 
+        page_size: int = 10, 
+        country: str = None, 
+        nombre: str = None,
+        sort_by: str = "CustomerId",
+        sort_order: str = "asc"
+        ):
     conn = get_connection()
     cursor = conn.cursor()
 
     offset = (page - 1) * page_size
 
-    sql = """
-        SELECT CustomerId, FirstName, LastName, Country, Email
-        FROM Customer
-        WHERE 1 = 1
-    """
+    columnas_permitidas = {
+        "CustomerId": "CustomerId",
+        "FirstName": "FirstName",
+        "LastName": "LastName",
+        "Country": "Country",
+        "Email": "Email"
+        }
+    
+    if sort_by not in columnas_permitidas:
+        sort_by = "CustomerId"
 
+    if sort_order.lower() not in ["asc", "desc"]:
+        sort_order = "asc"
+
+    columna_orden = columnas_permitidas[sort_by]
+    direccion_orden = sort_order.upper()
+
+    where_sql = " WHERE 1 = 1 "
     params = []
 
     if country:
-        sql += " AND Country = ?"
+        where_sql += " AND Country = ?"
         params.append(country)
 
     if nombre:
-        sql += " AND (FirstName LIKE ? OR LastName LIKE ?)"
+        where_sql += " AND (FirstName LIKE ? OR LastName LIKE ?)"
         params.append(f"%{nombre}%")
         params.append(f"%{nombre}%")
 
-    sql += " ORDER BY CustomerId OFFSET ? ROWS FETCH NEXT ? ROWS ONLY"
-    params.extend([offset, page_size])
+    sql_total = f"""
+        SELECT COUNT(*) AS Total
+        FROM Customer
+        {where_sql}
+    """
 
-    cursor.execute(sql, params)
+    cursor.execute(sql_total, params)
+    total = cursor.fetchone()[0]
+
+    sql_data = f"""
+        SELECT CustomerId, FirstName, LastName, Country, Email
+        FROM Customer
+        {where_sql}
+        ORDER BY {columna_orden} {direccion_orden}
+        OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+    """
+
+    data_params = params.copy()
+    data_params.extend([offset, page_size])
+
+    cursor.execute(sql_data, data_params)
     rows = cursor.fetchall()
+
     conn.close()
 
-    resultado = []
+    data = []
     for row in rows:
-        resultado.append({
+        data.append({
             "customer_id": row.CustomerId,
             "first_name": row.FirstName,
             "last_name": row.LastName,
@@ -66,7 +103,17 @@ def obtener_clientes_paginado(page: int = 1, page_size: int = 10, country: str =
             "email": row.Email
         })
 
-    return resultado
+    total_pages = math.ceil(total / page_size) if total > 0 else 0
+
+    return {
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": total_pages,
+        "sort_by": sort_by,
+        "sort_order": direccion_orden.lower(),
+        "data": data
+    }
 
 
 def obtener_cliente_por_id(customer_id: int):
