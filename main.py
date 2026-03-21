@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException
-import crud
 from schemas import ComentarioClienteCrear
+from typing import Optional
+
+import crud
 
 app = FastAPI(
     title="Chinook API",
@@ -25,6 +27,18 @@ def obtener_cliente(customer_id: int):
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
 
     return cliente
+
+@app.get("/clientesPaginado")
+def listar_clientes_paginados(
+    page: int = 1,
+    page_size: int = 10,
+    country: Optional[str] = None,
+    nombre: Optional[str] = None
+):
+    if page < 1 or page_size < 1:
+        raise HTTPException(status_code=400, detail="Parámetros inválidos")
+    
+    return crud.obtener_clientes_paginado(page, page_size, country, nombre)
 
 
 @app.get("/artistas")

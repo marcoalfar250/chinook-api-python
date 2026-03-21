@@ -26,6 +26,48 @@ def obtener_clientes():
 
     return resultado
 
+def obtener_clientes_paginado(page: int = 1, page_size: int = 10, country: str = None, nombre: str = None):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    offset = (page - 1) * page_size
+
+    sql = """
+        SELECT CustomerId, FirstName, LastName, Country, Email
+        FROM Customer
+        WHERE 1 = 1
+    """
+
+    params = []
+
+    if country:
+        sql += " AND Country = ?"
+        params.append(country)
+
+    if nombre:
+        sql += " AND (FirstName LIKE ? OR LastName LIKE ?)"
+        params.append(f"%{nombre}%")
+        params.append(f"%{nombre}%")
+
+    sql += " ORDER BY CustomerId OFFSET ? ROWS FETCH NEXT ? ROWS ONLY"
+    params.extend([offset, page_size])
+
+    cursor.execute(sql, params)
+    rows = cursor.fetchall()
+    conn.close()
+
+    resultado = []
+    for row in rows:
+        resultado.append({
+            "customer_id": row.CustomerId,
+            "first_name": row.FirstName,
+            "last_name": row.LastName,
+            "country": row.Country,
+            "email": row.Email
+        })
+
+    return resultado
+
 
 def obtener_cliente_por_id(customer_id: int):
     conn = get_connection()
