@@ -115,7 +115,6 @@ def obtener_clientes_paginado(
         "data": data
     }
 
-
 def obtener_cliente_por_id(customer_id: int):
     conn = get_connection()
     cursor = conn.cursor()
@@ -140,7 +139,6 @@ def obtener_cliente_por_id(customer_id: int):
         "email": row.Email
     }
 
-
 def obtener_artistas():
     conn = get_connection()
     cursor = conn.cursor()
@@ -163,6 +161,81 @@ def obtener_artistas():
 
     return resultado
 
+def obtener_artitas_paginado(
+        page: int = 1, 
+        page_size: int = 10,
+        nombre: str = None,
+        sort_by: str = "ArtistId",
+        sort_order: str = "asc"
+):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    offset = (page - 1) * page_size
+
+    columnas_permitidas = {
+        "ArtistId": "ArtistId",
+        "Name": "Name"
+        }
+    
+    if sort_by not in columnas_permitidas:
+        sort_by = "ArtistId"
+
+    if sort_order.lower() not in ["asc", "desc"]:
+        sort_order = "asc"
+
+    columna_orden = columnas_permitidas[sort_by]
+    direccion_orden = sort_order.upper()
+
+    where_sql = " WHERE 1 = 1 "
+    params = []
+
+    if nombre:
+        where_sql += " AND Name LIKE ?"
+        params.append(f"%{nombre}%")
+    
+    sql_total = f"""
+        SELECT COUNT(*) AS Total
+        FROM Artist
+        {where_sql}
+    """
+
+    cursor.execute(sql_total, params)
+    total = cursor.fetchone()[0]
+    
+    sql_data = f"""
+        SELECT Name
+        FROM Artist
+        {where_sql}
+        ORDER BY {columna_orden} {direccion_orden}
+        OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+    """
+
+    data_params = params.copy()
+    data_params.extend([offset, page_size])
+
+    cursor.execute(sql_data, data_params)
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    data = []
+    for row in rows:
+        data.append({
+            "Name": row.Name          
+        })
+
+    total_pages = math.ceil(total / page_size) if total > 0 else 0
+
+    return {
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": total_pages,
+        "sort_by": sort_by,
+        "sort_order": direccion_orden.lower(),
+        "data": data
+    }
 
 def obtener_albumes():
     conn = get_connection()
@@ -191,7 +264,6 @@ def obtener_albumes():
         })
 
     return resultado
-
 
 def obtener_facturas():
     conn = get_connection()
@@ -225,7 +297,6 @@ def obtener_facturas():
 
     return resultado
 
-
 def obtener_facturas_por_cliente(customer_id: int):
     conn = get_connection()
     cursor = conn.cursor()
@@ -258,7 +329,6 @@ def obtener_facturas_por_cliente(customer_id: int):
         })
 
     return resultado
-
 
 def obtener_comentario():
     conn = get_connection()

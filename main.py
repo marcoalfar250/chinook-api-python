@@ -3,19 +3,19 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.exceptions import RequestValidationError
 from fastapi.security import OAuth2PasswordRequestForm
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from auth import create_access_token
+from security import get_current_user
 
 import crud
 from schemas import (
-    ComentarioClienteCrear,
-    LoginRequest
+    ComentarioClienteCrear
 )
 from exceptions import (
     http_exception_handler,
     validation_exception_handler,
     generic_exception_handler
 )
-from auth import create_access_token
-from security import get_current_user
+
 
 app = FastAPI(title="Chinook API", version="1.0")
 
@@ -74,16 +74,25 @@ def listar_clientes_paginados(
 def listar_artistas():
     return crud.obtener_artistas()
 
+@app.get("/artistasPaginado")
+def listar_artistas_paginados(
+    page: int = 1,
+    page_size: int = 10,
+    nombre: Optional[str] = None,
+    sort_by: str = "ArtistId",
+    sort_order: str = "asc"
+):
+    if page < 1 or page_size < 1:
+        raise HTTPException(status_code=400, detail="Parámetros inválidos")
+    return crud.obtener_artitas_paginado(page,page_size,nombre,sort_by,sort_order)
 
 @app.get("/albumes")
 def listar_albumes():
     return crud.obtener_albumes()
 
-
 @app.get("/facturas")
 def listar_facturas():
     return crud.obtener_facturas()
-
 
 @app.get("/facturas/cliente/{customer_id}")
 def listar_facturas_por_cliente(customer_id: int):

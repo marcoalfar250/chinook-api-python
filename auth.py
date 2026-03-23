@@ -1,24 +1,26 @@
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
+from settings import settings
 
-SECRET_KEY = "0>S4+bm3t<b5WK1j@xI^e|GfC?#h&;K}*WI9$!04>z8"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
 
     expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expires_delta or timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
     )
 
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
 def verify_access_token(token: str):
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token, 
+            settings.JWT_SECRET_KEY, 
+            algorithms=[settings.JWT_ALGORITHM]
+        )
         username: str = payload.get("sub")
 
         if username is None:
