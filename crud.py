@@ -415,3 +415,25 @@ def crear_comentario(customer_id: int, comentario: str):
         "fecha_registro": row[3]
     }
 
+def obtener_usuario_por_username(username: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT Id, Username, PasswordHash, Activo
+        FROM dbo.Usuario
+        WHERE Username = ?
+    """, username)
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return {
+        "id": row.Id,
+        "username": row.Username,
+        "password_hash": row.PasswordHash,
+        "activo": bool(row.Activo)
+    }
